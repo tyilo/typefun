@@ -1,4 +1,5 @@
 //! Simulate Turing machines on Rust's type system.
+//! Only binary tapes are supported.
 //!
 //! Example:
 //! ```
@@ -9,19 +10,21 @@
 //!     turing_machine::{HaltConfiguration, Run, RunOnBlank},
 //!     types::assert_same_type,
 //! };
-//! // Two-state busy beaver
 //!
+//! // Two-state busy beaver
 //! // Declare the states and the transitions:
 //! turing_machine! {
-//!     TM;
+//!     TM; // Name of the type implementing `TuringMachine`.
 //!
-//!     [A B];
+//!     [A B]; // Name of non-halting states.
 //!
-//!     (0, A) => (1, R, B);
+//!     // Transitions:
+//!     (0, A) =>            // When in state `A` and reading a `0`:
+//!               (1, R, B); // write a `1`, move to the Right and change the state to `B`.
 //!     (1, A) => (1, L, B);
 //!
 //!     (0, B) => (1, L, A);
-//!     (1, B) => (1, R, Z);
+//!     (1, B) => (1, R, Z); // `Z` is the halting state.
 //! }
 //!
 //! #[allow(dead_code)]
