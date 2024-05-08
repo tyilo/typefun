@@ -36,6 +36,60 @@
 //!
 //! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
 //! ```
+//!
+//! Expanding the macros this desugars to:
+//! ```
+//! use typefun::bool::{False, True};
+//! use typefun::turing_machine::{Run, TuringMachine, Step, State, NonHaltState, NonHaltConfiguration, NonHaltStep, HaltStep, WriteAndRight, WriteAndLeft, RunOnBlank, HaltConfiguration};
+//! use typefun::list::bool::{BoolList, Cons, Nil};
+//! use typefun::nat::consts::_6;
+//! use typefun::types::assert_same_type;
+//!
+//! struct TM;
+//! impl TuringMachine for TM {}
+//!
+//! struct A;
+//! impl State for A {}
+//! impl NonHaltState for A {}
+//!
+//! struct B;
+//! impl State for B {}
+//! impl NonHaltState for B {}
+//!
+//! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, False, Right, A> {
+//!     #[allow(unused_parens)]
+//!     type Next = NonHaltStep<WriteAndRight<Left, Right, True>, B>;
+//! }
+//!
+//! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, True, Right, A> {
+//!     #[allow(unused_parens)]
+//!     type Next = NonHaltStep<WriteAndLeft<Left, Right, True>, B>;
+//! }
+//!
+//! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, False, Right, B> {
+//!     #[allow(unused_parens)]
+//!     type Next = NonHaltStep<WriteAndLeft<Left, Right, True>, A>;
+//! }
+//!
+//! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, True, Right, B> {
+//!     #[allow(unused_parens)]
+//!     type Next = HaltStep<WriteAndRight<Left, Right, True>>;
+//! }
+//!
+//! #[allow(dead_code)]
+//! type Result = RunOnBlank<A>;
+//!
+//! const _: () = assert_same_type::<(
+//!     <Result as Run<TM>>::FinalConfiguration,
+//!     HaltConfiguration<
+//!         Cons<True, Cons<True, Nil>>,
+//!         True,
+//!         Cons<True, Nil>,
+//!     >,
+//! )>();
+//!
+//! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
+//! ```
 
 use core::marker::PhantomData;
 
