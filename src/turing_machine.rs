@@ -1,8 +1,7 @@
 //! Simulate Turing machines on Rust's type system.
 //!
-//! Only works when the Turing machine is created inside this crate :(
 //! Example:
-//! ```compile_fail
+//! ```
 //! use typefun::{to_bool_list, turing_machine};
 //! use typefun::turing_machine::{HaltConfiguration, Run, RunOnBlank};
 //! use typefun::bool::True;
@@ -12,6 +11,8 @@
 //!
 //! // Declare the states and the transitions:
 //! turing_machine! {
+//!     TM;
+//!
 //!     [A B];
 //!
 //!     (0, A) => (1, R, B);
@@ -25,7 +26,7 @@
 //! type Result = RunOnBlank<A>;
 //!
 //! const _: () = assert_same_type::<(
-//!     <Result as Run>::FinalConfiguration,
+//!     <Result as Run<TM>>::FinalConfiguration,
 //!     HaltConfiguration<
 //!         to_bool_list!(1, 1),
 //!         True,
@@ -33,7 +34,7 @@
 //!     >,
 //! )>();
 //!
-//! const _: () = assert_same_type::<(<Result as Run>::Steps, _6)>();
+//! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
 //! ```
 
 use core::marker::PhantomData;
@@ -70,6 +71,9 @@ pub type WriteAndLeft<Left, Right, Write> =
 pub type WriteAndRight<Left, Right, Write> =
     Tape<Cons<Write, Left>, <Right as BoolList>::Head, <Right as BoolList>::Tail>;
 
+/// A Turing machine.
+pub trait TuringMachine {}
+
 /// A Turing machine state.
 pub trait State {}
 
@@ -83,11 +87,11 @@ pub trait Configuration {
     type State: State;
 }
 
-pub trait Step {
+pub trait Step<TM: TuringMachine> {
     type Next: Configuration;
 }
 
-pub trait Run {
+pub trait Run<TM: TuringMachine> {
     type FinalConfiguration: Configuration;
     type Steps: Nat;
 }
@@ -102,7 +106,9 @@ impl<Left: BoolList, Head: Bool, Right: BoolList> Configuration
     type State = Halt;
 }
 
-impl<Left: BoolList, Head: Bool, Right: BoolList> Run for HaltConfiguration<Left, Head, Right> {
+impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList> Run<TM>
+    for HaltConfiguration<Left, Head, Right>
+{
     type FinalConfiguration = Self;
     type Steps = Zero;
 }
@@ -119,20 +125,26 @@ impl<Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState> Configura
     type State = State;
 }
 
-impl<Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState> Run
+impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState> Run<TM>
     for NonHaltConfiguration<Left, Head, Right, State>
 where
-    NonHaltConfiguration<Left, Head, Right, State>: Step,
-    <NonHaltConfiguration<Left, Head, Right, State> as Step>::Next: Run,
+    NonHaltConfiguration<Left, Head, Right, State>: Step<TM>,
+    <NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next: Run<TM>,
 {
     type FinalConfiguration =
-        <<NonHaltConfiguration<Left, Head, Right, State> as Step>::Next as Run>::FinalConfiguration;
-    type Steps =
-        Succ<<<NonHaltConfiguration<Left, Head, Right, State> as Step>::Next as Run>::Steps>;
+        <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::FinalConfiguration;
+    type Steps = Succ<
+        <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::Steps,
+    >;
 }
 
-pub type RunOn<Left, Head, Right, State> = NonHaltConfiguration<Left, Head, Right, State>;
-pub type RunOnBlank<State> = RunOn<Nil, False, Nil, State>;
+pub type RunOn<State, Tape> = NonHaltConfiguration<
+    <Tape as TapeT>::Left,
+    <Tape as TapeT>::Head,
+    <Tape as TapeT>::Right,
+    State,
+>;
+pub type RunOnBlank<State> = RunOn<State, BlankTape>;
 
 pub type HaltStep<Tape> =
     HaltConfiguration<<Tape as TapeT>::Left, <Tape as TapeT>::Head, <Tape as TapeT>::Right>;
@@ -157,9 +169,9 @@ mod macros {
     #[macro_export]
     #[doc(hidden)]
     macro_rules! __transition_aux {
-        (($head:ty, $state:ty) => $next:tt) => {
+        ($tm:ty: ($head:ty, $state:ty) => $next:tt) => {
             impl<Left: $crate::list::bool::BoolList, Right: $crate::list::bool::BoolList>
-                $crate::turing_machine::Step
+                $crate::turing_machine::Step<$tm>
                 for $crate::turing_machine::NonHaltConfiguration<Left, $head, Right, $state>
             {
                 #[allow(unused_parens)]
@@ -171,8 +183,8 @@ mod macros {
     #[macro_export]
     #[doc(hidden)]
     macro_rules! __transition_non_halt_aux {
-        (($head:ty, $state:ty) => ($write:ty, $move:ident, $new_state:ty)) => {
-            $crate::__transition_aux!(($head, $state) =>
+        ($tm:ty: ($head:ty, $state:ty) => ($write:ty, $move:ident, $new_state:ty)) => {
+            $crate::__transition_aux!($tm: ($head, $state) =>
                 ($crate::turing_machine::NonHaltStep<
                     $crate::turing_machine::$move<Left, Right, $write>,
                     $new_state,
@@ -183,8 +195,8 @@ mod macros {
     #[macro_export]
     #[doc(hidden)]
     macro_rules! __transition_halt_aux {
-        (($head:ty, $state:ty) => ($write:ty, $move:ident)) => {
-            $crate::__transition_aux!(($head, $state) =>
+        ($tm:ty: ($head:ty, $state:ty) => ($write:ty, $move:ident)) => {
+            $crate::__transition_aux!($tm: ($head, $state) =>
                 ($crate::turing_machine::HaltStep<
                     $crate::turing_machine::$move<Left, Right, $write>,
                 >));
@@ -204,33 +216,38 @@ mod macros {
 
     #[macro_export]
     macro_rules! transition {
-        (($head:tt, $state:ty) => ($write:tt, R, Z)) => {
-            $crate::__transition_halt_aux!(($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndRight));
+        ($tm:ty: ($head:tt, $state:ty) => ($write:tt, R, Z)) => {
+            $crate::__transition_halt_aux!($tm: ($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndRight));
         };
-        (($head:tt, $state:ty) => ($write:tt, L, Z)) => {
-            $crate::__transition_halt_aux!(($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndLeft));
+        ($tm:ty: ($head:tt, $state:ty) => ($write:tt, L, Z)) => {
+            $crate::__transition_halt_aux!($tm: ($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndLeft));
         };
-        (($head:tt, $state:ty) => ($write:tt, R, $new_state:ty)) => {
-            $crate::__transition_non_halt_aux!(($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndRight, $new_state));
+        ($tm:ty: ($head:tt, $state:ty) => ($write:tt, R, $new_state:ty)) => {
+            $crate::__transition_non_halt_aux!($tm: ($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndRight, $new_state));
         };
-        (($head:tt, $state:ty) => ($write:tt, L, $new_state:ty)) => {
-            $crate::__transition_non_halt_aux!(($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndLeft, $new_state));
+        ($tm:ty: ($head:tt, $state:ty) => ($write:tt, L, $new_state:ty)) => {
+            $crate::__transition_non_halt_aux!($tm: ($crate::__to_bool!($head), $state) => ($crate::__to_bool!($write), WriteAndLeft, $new_state));
         };
     }
 
     #[macro_export]
     macro_rules! turing_machine {
-        ([];) => {};
-        ([]; $from:tt => $to:tt; $($froms:tt => $tos:tt;)*) => {
-            $crate::transition!($from => $to);
+        ($tm:ident; [];) => {
+            struct $tm;
+            impl $crate::turing_machine::TuringMachine for $tm {}
+        };
+        ($tm:ident; []; $from:tt => $to:tt; $($froms:tt => $tos:tt;)*) => {
+            $crate::transition!($tm: $from => $to);
             $crate::turing_machine! {
+                $tm;
                 [];
                 $($froms => $tos;)*
             }
         };
-        ([$state:ident $($states:ident)*]; $($froms:tt => $tos:tt;)*) => {
+        ($tm:ident; [$state:ident $($states:ident)*]; $($froms:tt => $tos:tt;)*) => {
             $crate::state!($state);
             $crate::turing_machine! {
+                $tm;
                 [$($states)*];
                 $($froms => $tos;)*
             }
@@ -240,14 +257,14 @@ mod macros {
 
 mod test {
     use super::*;
-    use crate::nat;
-    use crate::turing_machine;
-    use crate::{nat::consts::*, to_bool_list};
+    use crate::{nat, nat::consts::*, to_bool_list, turing_machine};
 
     mod one_state_busy_beaver {
         use super::*;
 
         turing_machine! {
+            TM;
+
             [A];
 
             (0, A) => (1, R, Z);
@@ -257,17 +274,19 @@ mod test {
         type Result = RunOnBlank<A>;
 
         const _: () = assert_same_type::<(
-            <Result as Run>::FinalConfiguration,
+            <Result as Run<TM>>::FinalConfiguration,
             HaltConfiguration<Cons<True, Nil>, False, Nil>,
         )>();
 
-        const _: () = assert_same_type::<(<Result as Run>::Steps, _1)>();
+        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _1)>();
     }
 
     mod two_state_busy_beaver {
         use super::*;
 
         turing_machine! {
+            TM;
+
             [A B];
 
             (0, A) => (1, R, B);
@@ -281,17 +300,19 @@ mod test {
         type Result = RunOnBlank<A>;
 
         const _: () = assert_same_type::<(
-            <Result as Run>::FinalConfiguration,
+            <Result as Run<TM>>::FinalConfiguration,
             HaltConfiguration<to_bool_list!(1, 1), True, to_bool_list!(1)>,
         )>();
 
-        const _: () = assert_same_type::<(<Result as Run>::Steps, _6)>();
+        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
     }
 
     mod three_state_busy_beaver {
         use super::*;
 
         turing_machine! {
+            TM;
+
             [A B C];
 
             (0, A) => (1, R, B);
@@ -308,17 +329,19 @@ mod test {
         type Result = RunOnBlank<A>;
 
         const _: () = assert_same_type::<(
-            <Result as Run>::FinalConfiguration,
+            <Result as Run<TM>>::FinalConfiguration,
             HaltConfiguration<to_bool_list!(1, 1, 1), True, to_bool_list!(1, 1)>,
         )>();
 
-        const _: () = assert_same_type::<(<Result as Run>::Steps, _14)>();
+        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _14)>();
     }
 
     mod four_state_busy_beaver {
         use super::*;
 
         turing_machine! {
+            TM;
+
             [A B C D];
 
             (0, A) => (1, R, B);
@@ -338,7 +361,7 @@ mod test {
         type Result = RunOnBlank<A>;
 
         const _: () = assert_same_type::<(
-            <Result as Run>::FinalConfiguration,
+            <Result as Run<TM>>::FinalConfiguration,
             HaltConfiguration<
                 to_bool_list!(1),
                 False,
@@ -346,6 +369,42 @@ mod test {
             >,
         )>();
 
-        const _: () = assert_same_type::<(<Result as Run>::Steps, nat!(1, 0, 7))>();
+        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, nat!(1, 0, 7))>();
+    }
+
+    mod adder {
+        use super::*;
+
+        // Input:  1 1 1 0 1 1 0 ...
+        // A:      1 1 1 X 1 1 0 ...
+        // B:      1 1 1 1 1 X 0 ...
+        // C:      1 1 1 1 X 0 0 ...
+        // D:    X 1 1 1 1 1 0 0 ...
+        // Output: 1 1 1 1 1 0 0 ...
+
+        turing_machine! {
+            TM;
+
+            [A B C D];
+
+            (1, A) => (1, R, A);
+            (0, A) => (1, R, B);
+
+            (1, B) => (1, R, B);
+            (0, B) => (0, L, C);
+
+            (1, C) => (0, L, D);
+
+            (1, D) => (1, L, D);
+            (0, D) => (0, R, Z);
+        }
+
+        #[allow(dead_code)]
+        type Result = RunOn<A, Tape<Nil, True, to_bool_list!(1, 1, 0, 1, 1)>>;
+
+        const _: () = assert_same_type::<(
+            <Result as Run<TM>>::FinalConfiguration,
+            HaltConfiguration<to_bool_list!(0), True, to_bool_list!(1, 1, 1, 1, 0, 0)>,
+        )>();
     }
 }
