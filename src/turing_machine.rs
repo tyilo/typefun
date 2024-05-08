@@ -85,7 +85,7 @@
 //!
 //! If you create a TM that doesn't halt, you will get a compile error when trying to use the
 //! final tape or the total steps:
-//! ```compile_error
+//! ```compile_fail
 //! use typefun::nat::Nat;
 //! use typefun::turing_machine;
 //! use typefun::turing_machine::{Run, RunOnBlank};
@@ -109,7 +109,7 @@
 //! ```
 //!
 //! The same will happen if encountering an undefined transition:
-//! ```compile_error
+//! ```compile_fail
 //! use typefun::nat::Nat;
 //! use typefun::turing_machine;
 //! use typefun::turing_machine::{Run, RunOnBlank};
