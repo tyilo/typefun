@@ -6,3 +6,4 @@ pub mod nat;
 pub mod ord;
 pub mod turing_machine;
 pub mod types;
+mod uninhabited;

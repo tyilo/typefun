@@ -41,14 +41,14 @@
 //! use typefun::nat::consts::_6;
 //! use typefun::types::assert_same_type;
 //!
-//! struct TM;
+//! enum TM {}
 //! impl TuringMachine for TM {}
 //!
-//! struct A;
+//! enum A {}
 //! impl State for A {}
 //! impl NonHaltState for A {}
 //!
-//! struct B;
+//! enum B {}
 //! impl State for B {}
 //! impl NonHaltState for B {}
 //!
@@ -132,16 +132,17 @@
 //! const STEPS: usize = Steps::VALUE;
 //! ```
 
-use core::marker::PhantomData;
-
 use crate::{
     bool::{Bool, False},
     list::bool::{BoolList, Cons, Nil},
     nat::{Nat, Succ, Zero},
     types::assert_same_type,
+    uninhabited::PhantomUninhabited,
 };
 
-pub struct Tape<Left: BoolList, Head: Bool, Right: BoolList>(PhantomData<(Left, Head, Right)>);
+pub struct Tape<Left: BoolList, Head: Bool, Right: BoolList>(
+    PhantomUninhabited<(Left, Head, Right)>,
+);
 pub trait TapeT: private::Sealed {
     type Left: BoolList;
     type Head: Bool;
@@ -192,7 +193,7 @@ pub trait Run<TM: TuringMachine> {
 }
 
 pub struct HaltConfiguration<Left: BoolList, Head: Bool, Right: BoolList>(
-    PhantomData<(Left, Head, Right)>,
+    PhantomUninhabited<(Left, Head, Right)>,
 );
 impl<Left: BoolList, Head: Bool, Right: BoolList> Configuration
     for HaltConfiguration<Left, Head, Right>
@@ -211,7 +212,7 @@ impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList> Run<TM>
 pub trait NonHaltState: State {}
 
 pub struct NonHaltConfiguration<Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState>(
-    PhantomData<(Left, Head, Right, State)>,
+    PhantomUninhabited<(Left, Head, Right, State)>,
 );
 impl<Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState> Configuration
     for NonHaltConfiguration<Left, Head, Right, State>
@@ -328,7 +329,7 @@ mod macros {
     #[macro_export]
     macro_rules! turing_machine {
         ($tm:ident; [];) => {
-            struct $tm;
+            enum $tm {}
             impl $crate::turing_machine::TuringMachine for $tm {}
         };
         ($tm:ident; []; $from:tt => $to:tt; $($froms:tt => $tos:tt;)*) => {

@@ -1,8 +1,7 @@
-use core::marker::PhantomData;
-
 use crate::{
     bool::{BoolT, False, Not},
     ord::{Equal, Greater, Less, OrderingEq, OrderingT},
+    uninhabited::PhantomUninhabited,
 };
 
 /// A natural number.
@@ -26,7 +25,7 @@ impl NatT for Zero {
 }
 
 /// Represent the natural number `succ(T) = T + 1`.
-pub struct Succ<T: Nat>(PhantomData<T>);
+pub struct Succ<T: Nat>(PhantomUninhabited<T>);
 impl<T: Nat> Nat for Succ<T> {
     const VALUE: usize = T::VALUE + 1;
 }
@@ -43,7 +42,7 @@ mod private_nat {
 }
 
 #[doc(hidden)]
-pub struct NatCmpBase<A: Nat, B: Nat>(PhantomData<(A, B)>);
+pub struct NatCmpBase<A: Nat, B: Nat>(PhantomUninhabited<(A, B)>);
 impl OrderingT for NatCmpBase<Zero, Zero> {
     type Type = Equal;
 }
@@ -64,7 +63,7 @@ where
 }
 
 /// Represent the comparison of `a` and `b`.
-pub struct NatCmp<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatCmp<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> OrderingT for NatCmp<A, B>
 where
     NatCmpBase<A::Type, B::Type>: OrderingT,
@@ -73,7 +72,7 @@ where
 }
 
 /// Represent the boolean value `a == b`.
-pub struct NatEq<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatEq<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> BoolT for NatEq<A, B>
 where
     NatCmp<A, B>: OrderingT,
@@ -83,7 +82,7 @@ where
 }
 
 /// Represent the boolean value `a != b`.
-pub struct NatNe<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatNe<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> BoolT for NatNe<A, B>
 where
     NatEq<A, B>: BoolT,
@@ -93,7 +92,7 @@ where
 }
 
 /// Represent the boolean value `a < b`.
-pub struct NatLt<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatLt<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> BoolT for NatLt<A, B>
 where
     NatCmp<A, B>: OrderingT,
@@ -103,7 +102,7 @@ where
 }
 
 /// Represent the boolean value `a > b`.
-pub struct NatGt<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatGt<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> BoolT for NatGt<A, B>
 where
     NatCmp<A, B>: OrderingT,
@@ -113,7 +112,7 @@ where
 }
 
 /// Represent the boolean value `a <= b`.
-pub struct NatLe<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatLe<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> BoolT for NatLe<A, B>
 where
     NatGt<A, B>: BoolT,
@@ -123,7 +122,7 @@ where
 }
 
 /// Represent the boolean value `a >= b`.
-pub struct NatGe<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct NatGe<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> BoolT for NatGe<A, B>
 where
     NatLt<A, B>: BoolT,
@@ -133,7 +132,7 @@ where
 }
 
 #[doc(hidden)]
-pub struct PlusBase<A: Nat, B: Nat>(PhantomData<(A, B)>);
+pub struct PlusBase<A: Nat, B: Nat>(PhantomUninhabited<(A, B)>);
 impl<A: Nat> NatT for PlusBase<A, Zero> {
     type Type = A;
 }
@@ -145,7 +144,7 @@ where
 }
 
 /// Represent the natural number `a + b`.
-pub struct Plus<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct Plus<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> NatT for Plus<A, B>
 where
     PlusBase<A::Type, B::Type>: NatT,
@@ -154,7 +153,7 @@ where
 }
 
 #[doc(hidden)]
-pub struct MulBase<A: Nat, B: Nat>(PhantomData<(A, B)>);
+pub struct MulBase<A: Nat, B: Nat>(PhantomUninhabited<(A, B)>);
 impl<A: Nat> NatT for MulBase<A, Zero> {
     type Type = Zero;
 }
@@ -168,7 +167,7 @@ where
 }
 
 /// Represent the natural number `a * b`.
-pub struct Mul<A: NatT, B: NatT>(PhantomData<(A, B)>);
+pub struct Mul<A: NatT, B: NatT>(PhantomUninhabited<(A, B)>);
 impl<A: NatT, B: NatT> NatT for Mul<A, B>
 where
     MulBase<A::Type, B::Type>: NatT,

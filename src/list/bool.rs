@@ -1,6 +1,7 @@
-use core::marker::PhantomData;
-
-use crate::bool::{Bool, False};
+use crate::{
+    bool::{Bool, False},
+    uninhabited::PhantomUninhabited,
+};
 
 /// Represents a finite list of boolean values appended with an infinite
 /// number of `False` values.
@@ -15,7 +16,7 @@ impl BoolList for Nil {
     type Tail = Nil;
 }
 
-pub struct Cons<B: Bool, T: BoolList>(PhantomData<(B, T)>);
+pub struct Cons<B: Bool, T: BoolList>(PhantomUninhabited<(B, T)>);
 impl<B: Bool, T: BoolList> BoolList for Cons<B, T> {
     type Head = B;
     type Tail = T;

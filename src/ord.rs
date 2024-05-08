@@ -1,6 +1,9 @@
-use core::{cmp::Ordering as StdOrdering, marker::PhantomData};
+use core::cmp::Ordering as StdOrdering;
 
-use crate::bool::{BoolT, False, True};
+use crate::{
+    bool::{BoolT, False, True},
+    uninhabited::PhantomUninhabited,
+};
 
 /// The result of comparing two values.
 pub trait Ordering: OrderingT + private_ord::Sealed {
@@ -40,7 +43,7 @@ impl OrderingT for Greater {
 }
 
 /// Reprensents the boolean value `a == b`.
-pub struct OrderingEqBase<A: Ordering, B: Ordering>(PhantomData<(A, B)>);
+pub struct OrderingEqBase<A: Ordering, B: Ordering>(PhantomUninhabited<(A, B)>);
 impl BoolT for OrderingEqBase<Less, Less> {
     type Type = True;
 }
@@ -69,7 +72,7 @@ impl BoolT for OrderingEqBase<Greater, Equal> {
     type Type = False;
 }
 
-pub struct OrderingEq<A: OrderingT, B: OrderingT>(PhantomData<(A, B)>);
+pub struct OrderingEq<A: OrderingT, B: OrderingT>(PhantomUninhabited<(A, B)>);
 impl<A: OrderingT, B: OrderingT> BoolT for OrderingEq<A, B>
 where
     OrderingEqBase<A::Type, B::Type>: BoolT,

@@ -1,4 +1,4 @@
-use core::marker::PhantomData;
+use crate::uninhabited::PhantomUninhabited;
 
 /// A boolean value.
 /// The only implementations are `False` or `True`.
@@ -37,7 +37,7 @@ mod private_bool {
     impl Sealed for True {}
 }
 
-pub struct NandBase<A: Bool, B: Bool>(PhantomData<(A, B)>);
+pub struct NandBase<A: Bool, B: Bool>(PhantomUninhabited<(A, B)>);
 impl BoolT for NandBase<False, False> {
     type Type = True;
 }
@@ -52,7 +52,7 @@ impl BoolT for NandBase<True, True> {
 }
 
 /// Represents `A nand B`.
-pub struct Nand<A: BoolT, B: BoolT>(PhantomData<(A, B)>);
+pub struct Nand<A: BoolT, B: BoolT>(PhantomUninhabited<(A, B)>);
 impl<A: BoolT, B: BoolT> BoolT for Nand<A, B>
 where
     NandBase<A::Type, B::Type>: BoolT,
@@ -61,7 +61,7 @@ where
 }
 
 /// Represents `not A`.
-pub struct Not<A: BoolT>(PhantomData<A>);
+pub struct Not<A: BoolT>(PhantomUninhabited<A>);
 impl<A: BoolT> BoolT for Not<A>
 where
     Nand<A, A>: BoolT,
@@ -70,7 +70,7 @@ where
 }
 
 /// Represents `A and B`.
-pub struct And<A: BoolT, B: BoolT>(PhantomData<(A, B)>);
+pub struct And<A: BoolT, B: BoolT>(PhantomUninhabited<(A, B)>);
 impl<A: BoolT, B: BoolT> BoolT for And<A, B>
 where
     Nand<A, B>: BoolT,
@@ -80,7 +80,7 @@ where
 }
 
 /// Represents `A or B`.
-pub struct Or<A: BoolT, B: BoolT>(PhantomData<(A, B)>);
+pub struct Or<A: BoolT, B: BoolT>(PhantomUninhabited<(A, B)>);
 impl<A: BoolT, B: BoolT> BoolT for Or<A, B>
 where
     Not<A>: BoolT,
@@ -91,7 +91,7 @@ where
 }
 
 /// Represents `A nor B`.
-pub struct Nor<A: BoolT, B: BoolT>(PhantomData<(A, B)>);
+pub struct Nor<A: BoolT, B: BoolT>(PhantomUninhabited<(A, B)>);
 impl<A: BoolT, B: BoolT> BoolT for Nor<A, B>
 where
     Or<A, B>: BoolT,
@@ -101,7 +101,7 @@ where
 }
 
 /// Represents `A xnor B`.
-pub struct Xnor<A: BoolT, B: BoolT>(PhantomData<(A, B)>);
+pub struct Xnor<A: BoolT, B: BoolT>(PhantomUninhabited<(A, B)>);
 impl<A: BoolT, B: BoolT> BoolT for Xnor<A, B>
 where
     Nand<A, B>: BoolT,
@@ -112,7 +112,7 @@ where
 }
 
 /// Represents `A xor B`.
-pub struct Xor<A: BoolT, B: BoolT>(PhantomData<(A, B)>);
+pub struct Xor<A: BoolT, B: BoolT>(PhantomUninhabited<(A, B)>);
 impl<A: BoolT, B: BoolT> BoolT for Xor<A, B>
 where
     Xnor<A, B>: BoolT,
