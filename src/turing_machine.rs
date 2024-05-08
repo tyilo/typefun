@@ -2,7 +2,7 @@
 //!
 //! Example:
 //! ```
-//! use typefun::{to_bool_list, turing_machine};
+//! use typefun::{tape, turing_machine};
 //! use typefun::turing_machine::{HaltConfiguration, Run, RunOnBlank};
 //! use typefun::bool::True;
 //! use typefun::nat::consts::_6;
@@ -26,12 +26,8 @@
 //! type Result = RunOnBlank<A>;
 //!
 //! const _: () = assert_same_type::<(
-//!     <Result as Run<TM>>::FinalConfiguration,
-//!     HaltConfiguration<
-//!         to_bool_list!(1, 1),
-//!         True,
-//!         to_bool_list!(1),
-//!     >,
+//!     <Result as Run<TM>>::FinalTape,
+//!     tape!([1 1] 1 [1]),
 //! )>();
 //!
 //! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
@@ -40,7 +36,7 @@
 //! Expanding the macros this desugars to:
 //! ```
 //! use typefun::bool::{False, True};
-//! use typefun::turing_machine::{Run, TuringMachine, Step, State, NonHaltState, NonHaltConfiguration, NonHaltStep, HaltStep, WriteAndRight, WriteAndLeft, RunOnBlank, HaltConfiguration};
+//! use typefun::turing_machine::{Tape, Run, TuringMachine, Step, State, NonHaltState, NonHaltConfiguration, NonHaltStep, HaltStep, WriteAndRight, WriteAndLeft, RunOnBlank, HaltConfiguration};
 //! use typefun::list::bool::{BoolList, Cons, Nil};
 //! use typefun::nat::consts::_6;
 //! use typefun::types::assert_same_type;
@@ -57,22 +53,18 @@
 //! impl NonHaltState for B {}
 //!
 //! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, False, Right, A> {
-//!     #[allow(unused_parens)]
 //!     type Next = NonHaltStep<WriteAndRight<Left, Right, True>, B>;
 //! }
 //!
 //! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, True, Right, A> {
-//!     #[allow(unused_parens)]
 //!     type Next = NonHaltStep<WriteAndLeft<Left, Right, True>, B>;
 //! }
 //!
 //! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, False, Right, B> {
-//!     #[allow(unused_parens)]
 //!     type Next = NonHaltStep<WriteAndLeft<Left, Right, True>, A>;
 //! }
 //!
 //! impl<Left: BoolList, Right: BoolList> Step<TM> for NonHaltConfiguration<Left, True, Right, B> {
-//!     #[allow(unused_parens)]
 //!     type Next = HaltStep<WriteAndRight<Left, Right, True>>;
 //! }
 //!
@@ -80,8 +72,8 @@
 //! type Result = RunOnBlank<A>;
 //!
 //! const _: () = assert_same_type::<(
-//!     <Result as Run<TM>>::FinalConfiguration,
-//!     HaltConfiguration<
+//!     <Result as Run<TM>>::FinalTape,
+//!     Tape<
 //!         Cons<True, Cons<True, Nil>>,
 //!         True,
 //!         Cons<True, Nil>,
@@ -90,11 +82,60 @@
 //!
 //! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
 //! ```
+//!
+//! If you create a TM that doesn't halt, you will get a compile error when trying to use the
+//! final tape or the total steps:
+//! ```compile_error
+//! use typefun::nat::Nat;
+//! use typefun::turing_machine;
+//! use typefun::turing_machine::{Run, RunOnBlank};
+//!
+//! turing_machine! {
+//!     NoHalt;
+//!
+//!     [A];
+//!
+//!     (0, A) => (0, R, A);
+//! }
+//!
+//! #[allow(dead_code)]
+//! type Result = RunOnBlank<A>;
+//!
+//! #[allow(dead_code)]
+//! type Steps = <Result as Run<NoHalt>>::Steps;
+//!
+//! // Error: overflow evaluating the requirement `Succ<Succ<_>>: Nat`
+//! const STEPS: usize = Steps::VALUE;
+//! ```
+//!
+//! The same will happen if encountering an undefined transition:
+//! ```compile_error
+//! use typefun::nat::Nat;
+//! use typefun::turing_machine;
+//! use typefun::turing_machine::{Run, RunOnBlank};
+//!
+//! turing_machine! {
+//!     UndefinedTransition;
+//!
+//!     [A];
+//!
+//!     (1, A) => (0, R, Z);
+//! }
+//!
+//! #[allow(dead_code)]
+//! type Result = RunOnBlank<A>;
+//!
+//! #[allow(dead_code)]
+//! type Steps = <Result as Run<UndefinedTransition>>::Steps;
+//!
+//! // Error: the trait bound `NonHaltConfiguration<Nil, False, Nil, A>: Step<UndefinedTransition>` is not satisfied
+//! const STEPS: usize = Steps::VALUE;
+//! ```
 
 use core::marker::PhantomData;
 
 use crate::{
-    bool::{Bool, False, True},
+    bool::{Bool, False},
     list::bool::{BoolList, Cons, Nil},
     nat::{Nat, Succ, Zero},
     types::assert_same_type,
@@ -137,7 +178,7 @@ impl State for Halt {}
 
 /// A configuration of a Turing machine.
 pub trait Configuration {
-    type Tape;
+    type Tape: TapeT;
     type State: State;
 }
 
@@ -146,7 +187,7 @@ pub trait Step<TM: TuringMachine> {
 }
 
 pub trait Run<TM: TuringMachine> {
-    type FinalConfiguration: Configuration;
+    type FinalTape: TapeT;
     type Steps: Nat;
 }
 
@@ -163,7 +204,7 @@ impl<Left: BoolList, Head: Bool, Right: BoolList> Configuration
 impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList> Run<TM>
     for HaltConfiguration<Left, Head, Right>
 {
-    type FinalConfiguration = Self;
+    type FinalTape = <Self as Configuration>::Tape;
     type Steps = Zero;
 }
 
@@ -185,8 +226,8 @@ where
     NonHaltConfiguration<Left, Head, Right, State>: Step<TM>,
     <NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next: Run<TM>,
 {
-    type FinalConfiguration =
-        <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::FinalConfiguration;
+    type FinalTape =
+        <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::FinalTape;
     type Steps = Succ<
         <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::Steps,
     >;
@@ -307,11 +348,22 @@ mod macros {
             }
         };
     }
+
+    #[macro_export]
+    macro_rules! tape {
+        ([$($left:tt)*] $head:tt [$($right:tt)*]) => {
+            $crate::turing_machine::Tape<
+                $crate::to_bool_list!($($left),*),
+                $crate::__to_bool!($head),
+                $crate::to_bool_list!($($right),*)
+            >
+        };
+    }
 }
 
 mod test {
     use super::*;
-    use crate::{nat, nat::consts::*, to_bool_list, turing_machine};
+    use crate::{nat, nat::consts::*, tape, turing_machine};
 
     mod one_state_busy_beaver {
         use super::*;
@@ -327,10 +379,7 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () = assert_same_type::<(
-            <Result as Run<TM>>::FinalConfiguration,
-            HaltConfiguration<Cons<True, Nil>, False, Nil>,
-        )>();
+        const _: () = assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([1] 0 []))>();
 
         const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _1)>();
     }
@@ -353,10 +402,7 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () = assert_same_type::<(
-            <Result as Run<TM>>::FinalConfiguration,
-            HaltConfiguration<to_bool_list!(1, 1), True, to_bool_list!(1)>,
-        )>();
+        const _: () = assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([1 1] 1 [1]))>();
 
         const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
     }
@@ -382,10 +428,8 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () = assert_same_type::<(
-            <Result as Run<TM>>::FinalConfiguration,
-            HaltConfiguration<to_bool_list!(1, 1, 1), True, to_bool_list!(1, 1)>,
-        )>();
+        const _: () =
+            assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([1 1 1] 1 [1 1]))>();
 
         const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _14)>();
     }
@@ -415,12 +459,8 @@ mod test {
         type Result = RunOnBlank<A>;
 
         const _: () = assert_same_type::<(
-            <Result as Run<TM>>::FinalConfiguration,
-            HaltConfiguration<
-                to_bool_list!(1),
-                False,
-                to_bool_list!(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-            >,
+            <Result as Run<TM>>::FinalTape,
+            tape!([1] 0 [1 1 1 1 1 1 1 1 1 1 1 1]),
         )>();
 
         const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, nat!(1, 0, 7))>();
@@ -454,11 +494,9 @@ mod test {
         }
 
         #[allow(dead_code)]
-        type Result = RunOn<A, Tape<Nil, True, to_bool_list!(1, 1, 0, 1, 1)>>;
+        type Result = RunOn<A, tape!([] 1 [1 1 0 1 1])>;
 
-        const _: () = assert_same_type::<(
-            <Result as Run<TM>>::FinalConfiguration,
-            HaltConfiguration<to_bool_list!(0), True, to_bool_list!(1, 1, 1, 1, 0, 0)>,
-        )>();
+        const _: () =
+            assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([0] 1 [1 1 1 1 0 0]))>();
     }
 }
