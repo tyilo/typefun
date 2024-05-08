@@ -135,10 +135,10 @@
 use core::marker::PhantomData;
 
 use crate::{
-    bool::{Bool, False},
+    bool::{Bool, BoolIsEq, False},
     list::bool::{BoolList, Cons, Nil},
     nat::{Nat, Succ, Zero},
-    types::assert_same_type,
+    types::{assert_same_type, SameType},
 };
 
 pub struct Tape<Left: BoolList, Head: Bool, Right: BoolList>(PhantomData<(Left, Head, Right)>);
@@ -157,6 +157,16 @@ mod private {
     use super::*;
     pub trait Sealed {}
     impl<Left: BoolList, Head: Bool, Right: BoolList> Sealed for Tape<Left, Head, Right> {}
+}
+
+pub trait TapeEq {}
+impl<L1: BoolList, H1: Bool, R1: BoolList, L2: BoolList, H2: Bool, R2: BoolList> TapeEq
+    for (Tape<L1, H1, R1>, Tape<L2, H2, R2>)
+where
+    (L1, L2): TapeEq,
+    (H1, H2): BoolIsEq,
+    (R1, R2): TapeEq,
+{
 }
 
 pub type BlankTape = Tape<Nil, False, Nil>;
@@ -180,6 +190,20 @@ impl State for Halt {}
 pub trait Configuration {
     type Tape: TapeT;
     type State: State;
+}
+
+pub trait ConfigurationEq {}
+impl<C1: Configuration, C2: Configuration> ConfigurationEq for (C1, C2)
+where
+    (C1::Tape, C2::Tape): TapeEq,
+    (C1::State, C2::State): SameType,
+{
+}
+
+pub const fn assert_same_configuration<C1: Configuration, C2: Configuration>()
+where
+    (C1, C2): ConfigurationEq,
+{
 }
 
 pub trait Step<TM: TuringMachine> {

@@ -21,12 +21,28 @@ impl<B: Bool, T: BoolList> BoolList for Cons<B, T> {
     type Tail = T;
 }
 
+pub trait ListEq: private::Sealed {}
+impl ListEq for (Nil, Nil) {}
+impl<T: BoolList> ListEq for (Cons<False, T>, Nil) where (T, Nil): ListEq {}
+impl<T: BoolList> ListEq for (Nil, Cons<False, T>) where (Nil, T): ListEq {}
+impl<B: Bool, T1: BoolList, T2: BoolList> ListEq for (Cons<B, T1>, Cons<B, T2>) where
+    (T1, T2): ListEq
+{
+}
+
 mod private {
     use super::*;
 
     pub trait Sealed {}
     impl Sealed for Nil {}
     impl<B: Bool, T: BoolList> Sealed for Cons<B, T> {}
+    impl<T1: BoolList, T2: BoolList> Sealed for (T1, T2) {}
+}
+
+pub const fn assert_list_eq<T1: BoolList, T2: BoolList>()
+where
+    (T1, T2): ListEq,
+{
 }
 
 #[macro_export]
@@ -46,4 +62,18 @@ macro_rules! to_bool_list {
     (1, $($xs:tt),+) => {
         $crate::list::bool::Cons<$crate::bool::True, $crate::to_bool_list!($($xs),+)>
     };
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::bool::True;
+
+    const _: () = assert_list_eq::<Nil, Nil>();
+    const _: () = assert_list_eq::<Cons<True, Nil>, Cons<True, Nil>>();
+
+    const _: () = assert_list_eq::<Nil, Cons<False, Nil>>();
+    const _: () = assert_list_eq::<Cons<False, Nil>, Nil>();
+
+    const _: () = assert_list_eq::<Cons<True, Nil>, Cons<True, Cons<False, Nil>>>();
 }
