@@ -1,24 +1,35 @@
 use core::marker::PhantomData;
 
-use crate::bool::{Bool, False};
+use crate::{
+    bool::{Bool, False, True},
+    nat::{Nat, Succ, Zero},
+};
 
 /// Represents a list of boolean values. It represents a finite with appended with an infinity
 /// number of `False` values.
 pub trait BoolList: private::Sealed {
     type Head: Bool;
     type Tail: BoolList;
+    type Sum: Nat;
 }
 
 pub enum Nil {}
 impl BoolList for Nil {
     type Head = False;
     type Tail = Nil;
+    type Sum = Zero;
 }
 
 pub struct Cons<B: Bool, T: BoolList>(PhantomData<(B, T)>);
-impl<B: Bool, T: BoolList> BoolList for Cons<B, T> {
-    type Head = B;
+impl<T: BoolList> BoolList for Cons<False, T> {
+    type Head = False;
     type Tail = T;
+    type Sum = T::Sum;
+}
+impl<T: BoolList> BoolList for Cons<True, T> {
+    type Head = True;
+    type Tail = T;
+    type Sum = Succ<T::Sum>;
 }
 
 mod private {
