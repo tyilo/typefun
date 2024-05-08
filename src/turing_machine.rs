@@ -2,11 +2,13 @@
 //!
 //! Example:
 //! ```
-//! use typefun::{tape, turing_machine};
-//! use typefun::turing_machine::{HaltConfiguration, Run, RunOnBlank};
-//! use typefun::bool::True;
-//! use typefun::nat::consts::_6;
-//! use typefun::types::assert_same_type;
+//! use typefun::{
+//!     bool::True,
+//!     nat::consts::_6,
+//!     tape, turing_machine,
+//!     turing_machine::{HaltConfiguration, Run, RunOnBlank},
+//!     types::assert_same_type,
+//! };
 //! // Two-state busy beaver
 //!
 //! // Declare the states and the transitions:
@@ -25,21 +27,23 @@
 //! #[allow(dead_code)]
 //! type Result = RunOnBlank<A>;
 //!
-//! const _: () = assert_same_type::<
-//!     <Result as Run<TM>>::FinalTape,
-//!     tape!([1 1] 1 [1]),
-//! >();
+//! const _: () = assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([1 1] 1 [1])>();
 //!
 //! const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _6>();
 //! ```
 //!
 //! Expanding the macros this desugars to:
 //! ```
-//! use typefun::bool::{False, True};
-//! use typefun::turing_machine::{Tape, Run, TuringMachine, Step, State, NonHaltState, NonHaltConfiguration, NonHaltStep, HaltStep, WriteAndRight, WriteAndLeft, RunOnBlank, HaltConfiguration};
-//! use typefun::list::bool::{BoolList, Cons, Nil};
-//! use typefun::nat::consts::_6;
-//! use typefun::types::assert_same_type;
+//! use typefun::{
+//!     bool::{False, True},
+//!     list::bool::{BoolList, Cons, Nil},
+//!     nat::consts::_6,
+//!     turing_machine::{
+//!         HaltConfiguration, HaltStep, NonHaltConfiguration, NonHaltState, NonHaltStep, Run,
+//!         RunOnBlank, State, Step, Tape, TuringMachine, WriteAndLeft, WriteAndRight,
+//!     },
+//!     types::assert_same_type,
+//! };
 //!
 //! enum TM {}
 //! impl TuringMachine for TM {}
@@ -73,11 +77,7 @@
 //!
 //! const _: () = assert_same_type::<
 //!     <Result as Run<TM>>::FinalTape,
-//!     Tape<
-//!         Cons<True, Cons<True, Nil>>,
-//!         True,
-//!         Cons<True, Nil>,
-//!     >,
+//!     Tape<Cons<True, Cons<True, Nil>>, True, Cons<True, Nil>>,
 //! >();
 //!
 //! const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _6>();
