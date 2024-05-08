@@ -6,3 +6,5 @@
 [docs.rs]: https://docs.rs/typefun
 
 Emulating various values at compile-time using types.
+
+Also see [`typenum`](https://github.com/paholg/typenum).
