@@ -151,7 +151,11 @@ mod private_eq {
     }
 }
 
-pub const fn assert_bool_eq<T: BoolIsEq>() {}
+pub const fn assert_bool_eq<T1: BoolT, T2: BoolT>()
+where
+    (T1, T2): BoolIsEq,
+{
+}
 
 mod test {
     use super::*;
@@ -181,6 +185,4 @@ mod test {
     const _: () = assert_false::<Nor<False, True>>();
     const _: () = assert_false::<Nor<True, False>>();
     const _: () = assert_false::<Nor<True, True>>();
-
-    //const _: () = assert_true::<And<Or<True, False>, Xor<False, False>>>();
 }

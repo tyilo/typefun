@@ -200,8 +200,16 @@ mod private_eq {
     }
 }
 
-pub const fn assert_nat_eq<T: NatIsEq>() {}
-pub const fn assert_nat_neq<T: NatNotEq>() {}
+pub const fn assert_nat_eq<T1: NatT, T2: NatT>()
+where
+    (T1, T2): NatIsEq,
+{
+}
+pub const fn assert_nat_neq<T1: NatT, T2: NatT>()
+where
+    (T1, T2): NatNotEq,
+{
+}
 
 #[macro_export]
 #[doc(hidden)]
@@ -309,27 +317,27 @@ mod test {
     use super::{consts::*, *};
     use crate::bool::{assert_false, assert_true};
 
-    const _: () = assert_nat_eq::<(_0, _0)>();
-    const _: () = assert_nat_neq::<(_0, _1)>();
-    const _: () = assert_nat_neq::<(_1, _0)>();
-    const _: () = assert_nat_eq::<(_1, _1)>();
+    const _: () = assert_nat_eq::<_0, _0>();
+    const _: () = assert_nat_neq::<_0, _1>();
+    const _: () = assert_nat_neq::<_1, _0>();
+    const _: () = assert_nat_eq::<_1, _1>();
 
-    const _: () = assert_nat_neq::<(_2, _3)>();
-    const _: () = assert_nat_neq::<(_3, _2)>();
-    const _: () = assert_nat_eq::<(_3, _3)>();
+    const _: () = assert_nat_neq::<_2, _3>();
+    const _: () = assert_nat_neq::<_3, _2>();
+    const _: () = assert_nat_eq::<_3, _3>();
 
-    const _: () = assert_nat_eq::<(Plus<_0, _0>, _0)>();
-    const _: () = assert_nat_eq::<(Plus<_1, _0>, _1)>();
-    const _: () = assert_nat_eq::<(Plus<_1, _1>, _2)>();
+    const _: () = assert_nat_eq::<Plus<_0, _0>, _0>();
+    const _: () = assert_nat_eq::<Plus<_1, _0>, _1>();
+    const _: () = assert_nat_eq::<Plus<_1, _1>, _2>();
 
-    const _: () = assert_nat_eq::<(Plus<_2, _1>, Plus<_1, _2>)>();
-    const _: () = assert_nat_eq::<(Plus<Plus<_1, _1>, _1>, Plus<_1, Plus<_1, _1>>)>();
+    const _: () = assert_nat_eq::<Plus<_2, _1>, Plus<_1, _2>>();
+    const _: () = assert_nat_eq::<Plus<Plus<_1, _1>, _1>, Plus<_1, Plus<_1, _1>>>();
 
-    const _: () = assert_nat_eq::<(Mul<_0, _0>, _0)>();
-    const _: () = assert_nat_eq::<(Mul<_0, _10>, _0)>();
-    const _: () = assert_nat_eq::<(Mul<_10, _0>, _0)>();
-    const _: () = assert_nat_eq::<(Mul<_2, _5>, _10)>();
-    const _: () = assert_nat_eq::<(Mul<_3, _3>, _9)>();
+    const _: () = assert_nat_eq::<Mul<_0, _0>, _0>();
+    const _: () = assert_nat_eq::<Mul<_0, _10>, _0>();
+    const _: () = assert_nat_eq::<Mul<_10, _0>, _0>();
+    const _: () = assert_nat_eq::<Mul<_2, _5>, _10>();
+    const _: () = assert_nat_eq::<Mul<_3, _3>, _9>();
 
     const _: () = assert_false::<NatEq<_7, _8>>();
     const _: () = assert_true::<NatNe<_7, _8>>();

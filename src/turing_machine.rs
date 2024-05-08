@@ -25,12 +25,12 @@
 //! #[allow(dead_code)]
 //! type Result = RunOnBlank<A>;
 //!
-//! const _: () = assert_same_type::<(
+//! const _: () = assert_same_type::<
 //!     <Result as Run<TM>>::FinalTape,
 //!     tape!([1 1] 1 [1]),
-//! )>();
+//! >();
 //!
-//! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
+//! const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _6>();
 //! ```
 //!
 //! Expanding the macros this desugars to:
@@ -71,16 +71,16 @@
 //! #[allow(dead_code)]
 //! type Result = RunOnBlank<A>;
 //!
-//! const _: () = assert_same_type::<(
+//! const _: () = assert_same_type::<
 //!     <Result as Run<TM>>::FinalTape,
 //!     Tape<
 //!         Cons<True, Cons<True, Nil>>,
 //!         True,
 //!         Cons<True, Nil>,
 //!     >,
-//! )>();
+//! >();
 //!
-//! const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
+//! const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _6>();
 //! ```
 //!
 //! If you create a TM that doesn't halt, you will get a compile error when trying to use the
@@ -380,9 +380,8 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () = assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([1] 0 []))>();
-
-        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _1)>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([1] 0 [])>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _1>();
     }
 
     mod two_state_busy_beaver {
@@ -403,9 +402,8 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () = assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([1 1] 1 [1]))>();
-
-        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _6)>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([1 1] 1 [1])>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _6>();
     }
 
     mod three_state_busy_beaver {
@@ -429,10 +427,9 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () =
-            assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([1 1 1] 1 [1 1]))>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([1 1 1] 1 [1 1])>();
 
-        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, _14)>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::Steps, _14>();
     }
 
     mod four_state_busy_beaver {
@@ -459,12 +456,12 @@ mod test {
         #[allow(dead_code)]
         type Result = RunOnBlank<A>;
 
-        const _: () = assert_same_type::<(
+        const _: () = assert_same_type::<
             <Result as Run<TM>>::FinalTape,
             tape!([1] 0 [1 1 1 1 1 1 1 1 1 1 1 1]),
-        )>();
+        >();
 
-        const _: () = assert_same_type::<(<Result as Run<TM>>::Steps, nat!(1, 0, 7))>();
+        const _: () = assert_same_type::<<Result as Run<TM>>::Steps, nat!(1, 0, 7)>();
     }
 
     mod adder {
@@ -498,6 +495,6 @@ mod test {
         type Result = RunOn<A, tape!([] 1 [1 1 0 1 1])>;
 
         const _: () =
-            assert_same_type::<(<Result as Run<TM>>::FinalTape, tape!([0] 1 [1 1 1 1 0 0]))>();
+            assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([0] 1 [1 1 1 1 0 0])>();
     }
 }
