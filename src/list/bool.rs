@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use crate::bool::{Bool, False};
 
-/// Represents a list of boolean values. It represents a finite with appended with an infinity
+/// Represents a finite list of boolean values appended with an infinite
 /// number of `False` values.
 pub trait BoolList: private::Sealed {
     type Head: Bool;
