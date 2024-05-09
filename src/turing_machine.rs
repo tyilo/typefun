@@ -98,7 +98,7 @@
 //!
 //!     [A];
 //!
-//!     (0, A) => (0, R, A);
+//!     (0, A) => (1, R, A);
 //! }
 //!
 //! #[allow(dead_code)]
@@ -111,7 +111,37 @@
 //! const STEPS: usize = Steps::VALUE;
 //! ```
 //!
-//! The same will happen if encountering an undefined transition:
+//! Instead you can run the TM for a finite number of steps:
+//! ```
+//! # use typefun::nat::Nat;
+//! # use typefun::turing_machine;
+//! # use typefun::turing_machine::{Run, RunOnBlank};
+//! #
+//! # turing_machine! {
+//! #    NoHalt;
+//! #
+//! #    [A];
+//! #
+//! #    (0, A) => (1, R, A);
+//! # }
+//! #
+//! # #[allow(dead_code)]
+//! # type Result = RunOnBlank<A>;
+//! use typefun::{
+//!     nat::consts::_5,
+//!     tape,
+//!     turing_machine::{Configuration, StepN},
+//!     types::assert_same_type,
+//! };
+//!
+//! #[allow(dead_code)]
+//! type After5 = <Result as StepN<_5, NoHalt>>::Configuration;
+//!
+//! const _: () = assert_same_type::<<After5 as Configuration>::Tape, tape!([1 1 1 1 1] 0 [])>();
+//! const _: () = assert_same_type::<<After5 as Configuration>::State, A>();
+//! ```
+//!
+//! You will also get a compilation error if the simulation encounters an undefined transition:
 //! ```compile_fail
 //! use typefun::nat::Nat;
 //! use typefun::turing_machine;
@@ -186,15 +216,18 @@ pub trait Configuration {
     type State: State;
 }
 
+/// Perform a single step on a Turing machine.
 pub trait Step<TM: TuringMachine> {
     type Next: Configuration;
 }
 
+/// Run a Turing machine until it halts.
 pub trait Run<TM: TuringMachine> {
     type FinalTape: TapeT;
     type Steps: Nat;
 }
 
+/// Configuration of a Turing machine that has halted.
 pub struct HaltConfiguration<Left: BoolList, Head: Bool, Right: BoolList>(
     PhantomUninhabited<(Left, Head, Right)>,
 );
@@ -212,8 +245,10 @@ impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList> Run<TM>
     type Steps = Zero;
 }
 
+/// A state that is not the halting state.
 pub trait NonHaltState: State {}
 
+/// Configuration of a Turing machine that has not halted yet.
 pub struct NonHaltConfiguration<Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState>(
     PhantomUninhabited<(Left, Head, Right, State)>,
 );
@@ -227,22 +262,21 @@ impl<Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState> Configura
 impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState> Run<TM>
     for NonHaltConfiguration<Left, Head, Right, State>
 where
-    NonHaltConfiguration<Left, Head, Right, State>: Step<TM>,
-    <NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next: Run<TM>,
+    Self: Step<TM>,
+    <Self as Step<TM>>::Next: Run<TM>,
 {
-    type FinalTape =
-        <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::FinalTape;
-    type Steps = Succ<
-        <<NonHaltConfiguration<Left, Head, Right, State> as Step<TM>>::Next as Run<TM>>::Steps,
-    >;
+    type FinalTape = <<Self as Step<TM>>::Next as Run<TM>>::FinalTape;
+    type Steps = Succ<<<Self as Step<TM>>::Next as Run<TM>>::Steps>;
 }
 
+/// Helper type to run a Turing machine starting in state `State` and on the tape `Tape`.
 pub type RunOn<State, Tape> = NonHaltConfiguration<
     <Tape as TapeT>::Left,
     <Tape as TapeT>::Head,
     <Tape as TapeT>::Right,
     State,
 >;
+/// Helper type to run a Turing machine starting in state `State` and a blank tape.
 pub type RunOnBlank<State> = RunOn<State, BlankTape>;
 
 pub type HaltStep<Tape> =
@@ -253,6 +287,37 @@ pub type NonHaltStep<Tape, State> = NonHaltConfiguration<
     <Tape as TapeT>::Right,
     State,
 >;
+
+/// Perform a finite number of steps on a Turing machine.
+pub trait StepN<N: Nat, TM: TuringMachine> {
+    type Configuration: Configuration;
+}
+
+impl<N: Nat, TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList> StepN<N, TM>
+    for HaltConfiguration<Left, Head, Right>
+{
+    type Configuration = Self;
+}
+
+impl<TM: TuringMachine, Left: BoolList, Head: Bool, Right: BoolList, State: NonHaltState>
+    StepN<Zero, TM> for NonHaltConfiguration<Left, Head, Right, State>
+{
+    type Configuration = Self;
+}
+impl<
+        N: Nat,
+        TM: TuringMachine,
+        Left: BoolList,
+        Head: Bool,
+        Right: BoolList,
+        State: NonHaltState,
+    > StepN<Succ<N>, TM> for NonHaltConfiguration<Left, Head, Right, State>
+where
+    Self: Step<TM>,
+    <Self as Step<TM>>::Next: StepN<N, TM>,
+{
+    type Configuration = <<Self as Step<TM>>::Next as StepN<N, TM>>::Configuration;
+}
 
 /// Macros that make it easier to work with
 mod macros {
@@ -499,5 +564,40 @@ mod test {
 
         const _: () =
             assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([0] 1 [1 1 1 1 0 0])>();
+    }
+
+    mod step_n {
+        use super::*;
+
+        turing_machine! {
+            TM;
+
+            [A];
+
+            (0, A) => (1, R, A);
+        }
+
+        #[allow(dead_code)]
+        type Result = RunOnBlank<A>;
+
+        const _: () = assert_same_type::<
+            <<Result as StepN<_0, TM>>::Configuration as Configuration>::Tape,
+            tape!([] 0 []),
+        >();
+
+        const _: () = assert_same_type::<
+            <<Result as StepN<_1, TM>>::Configuration as Configuration>::Tape,
+            tape!([1] 0 []),
+        >();
+
+        const _: () = assert_same_type::<
+            <<Result as StepN<_2, TM>>::Configuration as Configuration>::Tape,
+            tape!([1 1] 0 []),
+        >();
+
+        const _: () = assert_same_type::<
+            <<Result as StepN<_10, TM>>::Configuration as Configuration>::Tape,
+            tape!([1 1 1 1 1 1 1 1 1 1] 0 []),
+        >();
     }
 }
