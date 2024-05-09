@@ -419,20 +419,38 @@ mod macros {
     }
 
     #[macro_export]
-    macro_rules! tape {
-        ([$($left:tt)*] $head:tt [$($right:tt)*]) => {
+    #[doc(hidden)]
+    macro_rules! __tape_aux {
+        ([] [$($left_rev:tt)*] $head:tt [$($right:tt)*]) => {
             $crate::turing_machine::Tape<
-                $crate::to_bool_list!($($left),*),
+                $crate::to_bool_list!($($left_rev),*),
                 $crate::__to_bool!($head),
                 $crate::to_bool_list!($($right),*)
             >
+        };
+        ([$x:tt $($left:tt)*] [$($left_rev:tt)*] $head:tt [$($right:tt)*]) => {
+            $crate::__tape_aux!([$($left)*] [$x $($left_rev)*] $head [$($right)*])
+        };
+    }
+
+    #[macro_export]
+    macro_rules! tape {
+        ([$($left:tt)*] $head:tt [$($right:tt)*]) => {
+            $crate::__tape_aux!([$($left)*] [] $head [$($right)*])
         };
     }
 }
 
 mod test {
     use super::*;
-    use crate::{nat, nat::consts::*, tape, turing_machine};
+    use crate::{bool::True, nat, nat::consts::*, tape, turing_machine};
+
+    const _: () = assert_same_type::<tape!([] 0 []), Tape<Nil, False, Nil>>();
+    const _: () = assert_same_type::<tape!([] 1 []), Tape<Nil, True, Nil>>();
+    const _: () =
+        assert_same_type::<tape!([1 0] 0 []), Tape<Cons<False, Cons<True, Nil>>, False, Nil>>();
+    const _: () =
+        assert_same_type::<tape!([] 0 [0 1]), Tape<Nil, False, Cons<False, Cons<True, Nil>>>>();
 
     mod one_state_busy_beaver {
         use super::*;
@@ -564,6 +582,24 @@ mod test {
 
         const _: () =
             assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([0] 1 [1 1 1 1 0 0])>();
+    }
+
+    mod left_non_palindrome {
+        use super::*;
+
+        turing_machine! {
+            TM;
+
+            [A B];
+
+            (0, A) => (1, R, B);
+            (0, B) => (0, R, Z);
+        }
+
+        #[allow(dead_code)]
+        type Result = RunOnBlank<A>;
+
+        const _: () = assert_same_type::<<Result as Run<TM>>::FinalTape, tape!([1 0] 0 [])>();
     }
 
     mod step_n {
